@@ -1,0 +1,19 @@
+{
+    "access": [
+        [
+            "root",
+            "toor",
+            0
+        ]
+    ],
+    "nodename": "examplenode",
+    "datastores": {
+        "default": {
+            "path": "/opt/datastore/"
+        },
+        "realm": {
+            "path": "/media/realm/tmp/qemu-testin/banto/",
+            "init": true
+        }
+    }
+}
