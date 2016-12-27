@@ -17,7 +17,17 @@ class QMachine(Machine):
         self.block_respawns = False
         # TODO validate specs
 
+    def get_status(self):
+        """
+        Return string "stopped" or "running" depending on machine status
+        @TODO machine status consts
+        """
+        return "stopped" if self.proc is None else "running"
+
     def start_machine(self):
+        """
+        If needed, launch the machine.
+        """
         if self.proc:
             raise Exception("Machine already running!")
         else:
@@ -29,6 +39,9 @@ class QMachine(Machine):
             Thread(target=self.wait_on_exit, args=[self.proc]).start()
 
     def wait_on_exit(self, proc):
+        """
+        Listener used by above start_machine to restart the machine if the machine exits
+        """
         proc.wait()
         logging.info("qemu process has exited")
         self.proc = None
@@ -36,20 +49,30 @@ class QMachine(Machine):
             self.start_machine()
 
     def stop_machine(self):
+        """
+        Send the powerdown signal to the running machine
+        """
         if self.proc:
-            logging.info("stopping machine...")
+            logging.info("stopping machine %s", self.spec.machine_id)
             self.proc.stdin.write(b"system_powerdown\n")
             self.proc.stdin.flush()
             self.proc.wait()
             self.proc = None
 
     def kill_machine(self):
+        """
+        Forcefully kill the running machine
+        """
+        print("Terminating {}".format(self.proc))
         if self.proc:
             self.proc.terminate()
             self.proc.wait()
             self.proc = None
 
     def get_args(self, tap):
+        """
+        Assemble the full argv array that will be executed for this machine
+        """
         argv = ['qemu-system-x86_64']
         argv += self.get_args_system()
         argv += self.get_args_drives()
@@ -78,7 +101,7 @@ class QMachine(Machine):
 
     def get_args_network(self, tap_name):
         """
-        Hard-coded for now
+        Return network related qemu args
         """
         args = []
         for iface in self.spec.properties.get("netifaces"):
@@ -87,7 +110,7 @@ class QMachine(Machine):
             if iface_type == "tap":
                 if "ifname" not in iface:
                     iface["ifname"] = tap_name
-                iface["script"] = "/root/zhypervisor/testenv/bin/zd_ifup"  # TODO fixme
+                iface["script"] = "/root/zhypervisor/testenv/bin/zd_ifup"  # TODO don't hard code
                 iface["downscript"] = "no"
 
             args.append("-net")

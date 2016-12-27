@@ -10,7 +10,7 @@ setup(name='zhypervisor',
       url='http://gitlab.xmopx.net/dave/zhypervisor',
       author='dpedu',
       author_email='dave@davepedu.com',
-      packages=['zhypervisor', 'zhypervisor.clients', 'zhypervisor.tools'],
+      packages=['zhypervisor', 'zhypervisor.clients', 'zhypervisor.api', 'zhypervisor.tools'],
       entry_points={'console_scripts': ['zd = zhypervisor.daemon:main',
                                         'zd_ifup = zhypervisor.tools.ifup:main']},
       zip_safe=False)

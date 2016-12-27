@@ -8,6 +8,10 @@ from zhypervisor.logging import setup_logging
 
 
 def main():
+    """
+    Helper script for dealing with QEMU network interfaces. When QEMU starts, it calls this script passing an interface
+    name when the virtual machine has been started with it. This needs to enable the interface.
+    """
     setup_logging()
     _, tap_name = sys.argv
     logging.info("Enabling interface %s...", tap_name)

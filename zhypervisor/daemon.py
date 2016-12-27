@@ -6,65 +6,133 @@ import logging
 import argparse
 from time import sleep
 from concurrent.futures import ThreadPoolExecutor
+from threading import Thread
 
 from zhypervisor.logging import setup_logging
 from zhypervisor.machine import MachineSpec
+from zhypervisor.api.api import ZApi
 
 from pprint import pprint
 
 
 class ZHypervisorDaemon(object):
     def __init__(self, config):
-        self.config = config
-        self.datastores = {}
-        self.machines = {}
+        """
+        Z Hypervisor main thread. Roles:
+        - Load and start machines and API on init
+        - Cleanup on shutdown
+        - Committing changes to machines to disk
+        - Primary interface to modify machines
+        """
+        self.config = config  # JSON config listing, mainly, datastore paths
+        self.datastores = {}  # Mapping of datastore name -> objects
+        self.machines = {}  # Mapping of machine name -> objects
         self.running = True
 
+        # Set up datastores and use the default datastore for "State" storage
         self.init_datastores()
         self.state = ZConfig(self.datastores["default"])
 
+        # start API
+        self.api = ZApi(self)
+
+        # Set up shutdown signal handlers
         signal.signal(signal.SIGINT, self.signal_handler)   # ctrl-c
         signal.signal(signal.SIGTERM, self.signal_handler)  # sigterm
 
     def init_datastores(self):
+        """
+        Per datastore in the config, create a ZDataStore object
+        """
         for name, info in self.config["datastores"].items():
             self.datastores[name] = ZDataStore(name, info["path"], info.get("init", False))
 
     def init_machines(self):
+        """
+        Per machine in the on-disk state, create a machine object
+        """
         for machine_info in self.state.get_machines():
-            machine_id = machine_info["id"]
-            self.add_machine(machine_id, machine_info["type"], machine_info["spec"])
+            machine_id = machine_info["machine_id"]
+            self.add_machine(machine_id, machine_info["machine_type"], machine_info["spec"])
 
-    def add_machine(self, machine_id, machine_type, machine_spec):
-        machine = MachineSpec(self, machine_id, machine_type, machine_spec)
-        self.machines[machine_id] = machine
-        if machine.options.get("autostart", False):
+    def add_machine(self, machine_id, machine_type, machine_spec, write=False):
+        """
+        Create or update a machine.
+        :param machine_id: alphanumeric id of machine to modify/create
+        :param machine_type: runnable type e.g. "q"
+        :param machine_spec: dictionary of machine options - see example/ubuntu.json
+        :param write: commit machinge changes to on-disk state
+        """
+        # Find / create the machine
+        if machine_id in self.machines:
+            machine = self.machines[machine_id]
+            machine.options = machine_spec["options"]
+            machine.properties = machine_spec["properties"]
+        else:
+            machine = MachineSpec(self, machine_id, machine_type, machine_spec)
+            self.machines[machine_id] = machine
+
+        # Update if necessary
+        if write:
+            self.state.write_machine(machine_id, machine_type, machine_spec)
+
+        # Launch if machine is an autostarted machine
+        if machine.options.get("autostart", False) and machine.machine.get_status() == "stopped":
             machine.start()
 
     def signal_handler(self, signum, frame):
+        """
+        Handle signals sent to the daemon. On any, exit.
+        """
         logging.critical("Got signal {}".format(signum))
         self.stop()
 
     def run(self):
-        # launch machines
+        """
+        Main loop of the daemon. Sets up & starts machines, runs api, and waits.
+        """
         self.init_machines()
-
-        # start API
-        # TODO
-
-        # Wait?
-        while self.running:
-            sleep(1)
+        self.api.run()
 
     def stop(self):
+        """
+        SHut down the hypervisor. Stop the API then shut down machines
+        """
         self.running = False
-
+        self.api.stop()
         with ThreadPoolExecutor(10) as pool:
-            for machine_id, machine in self.machines.items():
-                pool.submit(machine.stop)
+            for machine_id in self.machines.keys():
+                pool.submit(self.forceful_stop, machine_id)
+        # Sequential shutdown code below is easier to debug
+        # for machine_id in self.machines.keys():
+        #     self.forceful_stop(machine_id)
+
+    def forceful_stop(self, machine_id, timeout=10):  # make this timeout longer?
+        """
+        Gracefully stop a machine by asking it nicely, waiting some time, then forcefully killing it.
+        """
+        machine_spec = self.machines[machine_id]
+        nice_stop = Thread(target=machine_spec.stop)
+        nice_stop.start()
+        nice_stop.join(timeout)
+
+        if nice_stop.is_alive():
+            logging.error("%s did not respond in %s seconds, killing", machine_id, timeout)
+            machine_spec.machine.kill_machine()
+
+    def remove_machine(self, machine_id):
+        """
+        Remove a stopped machine from the system
+        """
+        assert self.machines[machine_id].machine.get_status() == "stopped"
+        self.state.remove_machine(machine_id)
+        del self.machines[machine_id]
 
 
 class ZDataStore(object):
+    """
+    Helper module representing a data storage location somewhere on disk
+    """
     def __init__(self, name, root_path, init_ok=False):
         self.name = name
         self.root_path = root_path
@@ -86,6 +154,9 @@ class ZDataStore(object):
 
 
 class ZConfig(object):
+    """
+    The Z Hypervisor daemon's interface to the on-disk config
+    """
     def __init__(self, datastore):
         self.datastore = datastore
 
@@ -95,12 +166,37 @@ class ZConfig(object):
             os.makedirs(d, exist_ok=True)
 
     def get_machines(self):
+        """
+        Return config of all machines on disk
+        """
         machines = []
         logging.info("Looking for machines in {}".format(self.machine_data_dir))
         for mach_name in os.listdir(self.machine_data_dir):
             with open(os.path.join(self.machine_data_dir, mach_name), "r") as f:
                 machines.append(json.load(f))
         return machines
+
+    def write_machine(self, machine_id, machine_type, machine_spec):
+        """
+        Write a machine's config to the disk. Params similar to elsewhere.
+        """
+        with open(os.path.join(self.machine_data_dir, "{}.json".format(machine_id)), "w") as f:
+            json.dump({"machine_id": machine_id,
+                       "machine_type": machine_type,
+                       "spec": machine_spec}, f, indent=4)
+
+    def write_machine_o(self, machine_obj):
+        """
+        Similar to write_machine, but accepts a MachineSpec object
+        """
+        self.write_machine(machine_obj.machine_id, machine_obj.machine_type, machine_obj.serialize())
+
+    def remove_machine(self, machine_id):
+        """
+        Remove a machine from the on disk state
+        """
+        json_path = os.path.join(self.machine_data_dir, "{}.json".format(machine_id))
+        os.unlink(json_path)
 
 
 def main():
@@ -118,7 +214,7 @@ def main():
                        "state": "/opt/datastore/state/",
                        "datastores": {
                            "default": {
-                               "path": "/opt/datastore/machines/"
+                               "path": "/opt/z/datastore/machines/"
                            }
                        }}, f, indent=4)
         return
@@ -128,3 +224,4 @@ def main():
 
     z = ZHypervisorDaemon(config)
     z.run()
+    print("Z has been shut down")

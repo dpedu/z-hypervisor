@@ -52,6 +52,12 @@ class Machine(object):
         """
         raise NotImplemented()
 
+    def get_status(self):
+        """
+        Get the machine's status (return one of "running" or "stopped")
+        """
+        raise NotImplemented()
+
     def get_datastore_path(self, datastore_name, *paths):
         """
         Resolve the filesystem path for a path in the given datastore

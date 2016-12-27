@@ -1,6 +1,6 @@
 {
-    "id": "banutoo2",
-    "type": "q",
+    "machine_id": "banutoo2",
+    "machine_type": "q",
     "spec": {
         "options": {
             "autostart": true,
