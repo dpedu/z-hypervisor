@@ -1,5 +1,5 @@
 {
-    "machine_id": "banutoo2",
+    "machine_id": "banutoo",
     "machine_type": "q",
     "spec": {
         "options": {
@@ -11,7 +11,7 @@
             "mem": 1024,
             "drives": [
                 {
-                    "file": "banutoo2.bin",
+                    "file": "ubuntu-root.bin",
                     "datastore": "realm",
                     "index": 0,
                     "if": "virtio"
@@ -22,13 +22,13 @@
                     "type": "nic",
                     "vlan": 0,
                     "model": "e1000",
-                    "macaddr": "82:25:60:41:D5:98"
+                    "macaddr": "82:25:60:41:D5:97"
                 },
                 {
                     "type": "tap"
                 }
             ],
-            "vnc": 6
+            "vnc": 5
         }
     }
 }
