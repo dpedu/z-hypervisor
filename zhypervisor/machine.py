@@ -39,6 +39,13 @@ class MachineSpec(object):
         self.machine.block_respawns = True
         self.machine.stop_machine()
 
+    def save(self):
+        """
+        Write the machine's config to disk
+        """
+        self.master.add_machine(self.machine_id, {"options": self.options, "properties": self.properties},
+                                write=True)
+
     def serialize(self):
         """
         Return a serializable form of this machine's specs

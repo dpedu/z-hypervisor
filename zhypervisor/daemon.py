@@ -67,6 +67,11 @@ class ZHypervisorDaemon(object):
             machine_id = machine_info["machine_id"]
             self.add_machine(machine_id, machine_info["spec"])
 
+            # Launch if machine is an autostarted machine
+            machine = self.machines[machine_id]
+            if machine.options.get("autostart", False) and machine.machine.get_status() == "stopped":
+                machine.start()
+
     def signal_handler(self, signum, frame):
         """
         Handle signals sent to the daemon. On any, exit.
@@ -148,11 +153,7 @@ class ZHypervisorDaemon(object):
         if write:
             self.state.write_machine(machine_id, machine_spec)
 
-        # Launch if machine is an autostarted machine
-        if machine.options.get("autostart", False) and machine.machine.get_status() == "stopped":
-            machine.start()
-
-    def forceful_stop(self, machine_id, timeout=10):  # make this timeout longer?
+    def forceful_stop(self, machine_id, timeout=30):  # make this timeout longer?
         """
         Gracefully stop a machine by asking it nicely, waiting some time, then forcefully killing it.
         """

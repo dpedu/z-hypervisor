@@ -149,6 +149,60 @@ class ZApiMachineRestart(object):
         return machine_id
 
 
+@cherrypy.popargs("prop")
+class ZApiMachineProperty(object):
+    """
+    Endpoint to modify machine properties
+    """
+    exposed = True
+
+    def __init__(self, root):
+        self.root = root
+
+    @cherrypy.tools.json_out()
+    def GET(self, machine_id, prop):
+        """
+        Fetch a property from a machine
+        """
+        try:
+            machine = self.root.master.machines[machine_id]
+            return machine.properties[prop]
+        except KeyError:
+            raise cherrypy.HTTPError(status=404)
+
+    @cherrypy.tools.json_out()
+    def PUT(self, machine_id, prop, value):
+        """
+        Set a property on a machine.
+        """
+        value = json.loads(value)
+        try:
+            machine = self.root.master.machines[machine_id]
+            assert machine.machine.get_status() == "stopped", "Machine must be stopped to modify"
+
+        except KeyError:
+            raise cherrypy.HTTPError(status=404)
+
+        machine.properties[prop] = value
+        machine.save()
+        return [machine_id, prop, value]
+
+    @cherrypy.tools.json_out()
+    def DELETE(self, machine_id, prop):
+        """
+        Remove a property on a machine.
+        """
+        try:
+            machine = self.root.master.machines[machine_id]
+            assert machine.machine.get_status() == "stopped", "Machine must be stopped to modify"
+        except KeyError:
+            raise cherrypy.HTTPError(status=404)
+
+        del machine.properties[prop]
+        machine.save()
+        return [machine_id, prop]
+
+
 @cherrypy.popargs("machine_id")
 class ZApiMachines():
     """
@@ -166,6 +220,7 @@ class ZApiMachines():
         self.stop = ZApiMachineStop(self.root)
         self.start = ZApiMachineStart(self.root)
         self.restart = ZApiMachineRestart(self.root)
+        self.property = ZApiMachineProperty(self.root)
 
     @cherrypy.tools.json_out()
     def GET(self, machine_id=None, summary=False):

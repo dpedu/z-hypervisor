@@ -107,15 +107,18 @@ class QMachine(Machine):
         args = []
         for iface in self.spec.properties.get("netifaces"):
             iface_type = iface.get("type")
+            iface_args = {"type": iface_type}
 
             if iface_type == "tap":
-                if "ifname" not in iface:
-                    iface["ifname"] = tap_name
-                iface["script"] = "/root/zhypervisor/testenv/bin/zd_ifup"  # TODO don't hard code
-                iface["downscript"] = "no"
+                if "ifname" in iface:
+                    iface_args["ifname"] = iface.get("ifname")
+                iface_args["script"] = "/root/zhypervisor/testenv/bin/zd_ifup"  # TODO don't hard code
+                iface_args["downscript"] = "no"
+            else:
+                iface_args.update(iface)
 
             args.append("-net")
-            args.append(QMachine.format_args(iface))
+            args.append(QMachine.format_args(iface_args))
         return args
 
         # return ['-net', 'nic,vlan=0,model=e1000,macaddr=82:25:60:41:D5:97',
