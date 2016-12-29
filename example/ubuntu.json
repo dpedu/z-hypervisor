@@ -1,5 +1,5 @@
 {
-    "machine_id": "banutoo",
+    "machine_id": "ubuntu",
     "machine_type": "q",
     "spec": {
         "options": {
@@ -12,9 +12,15 @@
             "drives": [
                 {
                     "file": "ubuntu-root.bin",
-                    "datastore": "realm",
+                    "datastore": "default",
                     "index": 0,
                     "if": "virtio"
+                },
+                {
+                    "file": "ubuntu-14.04.iso",
+                    "datastore": "default",
+                    "index": 1,
+                    "media": "cdrom"
                 }
             ],
             "netifaces": [
@@ -22,13 +28,13 @@
                     "type": "nic",
                     "vlan": 0,
                     "model": "e1000",
-                    "macaddr": "82:25:60:41:D5:97"
+                    "macaddr": "82:25:60:41:07:98"
                 },
                 {
                     "type": "tap"
                 }
             ],
-            "vnc": 5
+            "vnc": 10
         }
     }
 }

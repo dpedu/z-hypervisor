@@ -30,6 +30,7 @@ class MachineSpec(object):
         """
         Start this machine (pass-through)
         """
+        self.machine.block_respawns = False
         self.machine.start_machine()
 
     def stop(self):

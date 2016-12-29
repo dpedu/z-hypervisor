@@ -95,11 +95,8 @@ class ZApiV1(Mountable):
         """
         assert fmt in ["qcow2", "raw"], "Disk format is invalid"
         assert name.endswith(".bin"), "Disk must be named <something>.bin"
+        self.root.master.create_disk(datastore, name, fmt, size)
 
-        disk_path = self.root.master.datastores[datastore].get_filepath(name)
-        img_args = ["qemu-img", "create", "-f", fmt, disk_path, "{}M".format(int(size))]
-        logging.info("Creating disk with: %s", str(img_args))
-        subprocess.check_call(img_args)
         return name
 
 

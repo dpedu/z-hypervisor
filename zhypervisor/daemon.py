@@ -4,6 +4,7 @@ import json
 import signal
 import logging
 import argparse
+import subprocess
 from time import sleep
 from concurrent.futures import ThreadPoolExecutor
 from threading import Thread
@@ -55,31 +56,6 @@ class ZHypervisorDaemon(object):
             machine_id = machine_info["machine_id"]
             self.add_machine(machine_id, machine_info["machine_type"], machine_info["spec"])
 
-    def add_machine(self, machine_id, machine_type, machine_spec, write=False):
-        """
-        Create or update a machine.
-        :param machine_id: alphanumeric id of machine to modify/create
-        :param machine_type: runnable type e.g. "q"
-        :param machine_spec: dictionary of machine options - see example/ubuntu.json
-        :param write: commit machinge changes to on-disk state
-        """
-        # Find / create the machine
-        if machine_id in self.machines:
-            machine = self.machines[machine_id]
-            machine.options = machine_spec["options"]
-            machine.properties = machine_spec["properties"]
-        else:
-            machine = MachineSpec(self, machine_id, machine_type, machine_spec)
-            self.machines[machine_id] = machine
-
-        # Update if necessary
-        if write:
-            self.state.write_machine(machine_id, machine_type, machine_spec)
-
-        # Launch if machine is an autostarted machine
-        if machine.options.get("autostart", False) and machine.machine.get_status() == "stopped":
-            machine.start()
-
     def signal_handler(self, signum, frame):
         """
         Handle signals sent to the daemon. On any, exit.
@@ -107,6 +83,50 @@ class ZHypervisorDaemon(object):
         # for machine_id in self.machines.keys():
         #     self.forceful_stop(machine_id)
 
+    # Below here are methods external forces may use to manipulate disks
+
+    def create_disk(self, datastore, name, fmt, size=None):
+        """
+        Create a disk. Disks represent arbitrary storage
+        @TODO support formats passed by runnable modules
+        :param datastore: datastore to store the disk in
+        :param name: name for the disk
+        :param size: size of the disk, in mb, if applicable
+        :param format: format of the disk
+        """
+        disk_path = self.datastores[datastore].get_filepath(name)
+        assert not os.path.exists(disk_path), "Disk already exists!"
+        img_args = ["qemu-img", "create", "-f", fmt, disk_path, "{}M".format(int(size))]
+        logging.info("Creating disk with: %s", str(img_args))
+        subprocess.check_call(img_args)
+
+    # Below here are methods external forces may use to manipulate machines
+
+    def add_machine(self, machine_id, machine_type, machine_spec, write=False):
+        """
+        Create or update a machine.
+        :param machine_id: alphanumeric id of machine to modify/create
+        :param machine_type: runnable type e.g. "q"
+        :param machine_spec: dictionary of machine options - see example/ubuntu.json
+        :param write: commit machinge changes to on-disk state
+        """
+        # Find / create the machine
+        if machine_id in self.machines:
+            machine = self.machines[machine_id]
+            machine.options = machine_spec["options"]
+            machine.properties = machine_spec["properties"]
+        else:
+            machine = MachineSpec(self, machine_id, machine_type, machine_spec)
+            self.machines[machine_id] = machine
+
+        # Update if necessary
+        if write:
+            self.state.write_machine(machine_id, machine_type, machine_spec)
+
+        # Launch if machine is an autostarted machine
+        if machine.options.get("autostart", False) and machine.machine.get_status() == "stopped":
+            machine.start()
+
     def forceful_stop(self, machine_id, timeout=10):  # make this timeout longer?
         """
         Gracefully stop a machine by asking it nicely, waiting some time, then forcefully killing it.
@@ -122,7 +142,7 @@ class ZHypervisorDaemon(object):
 
     def remove_machine(self, machine_id):
         """
-        Remove a stopped machine from the system
+        Remove a stopped machine from the system. The machine should already be stopped.
         """
         assert self.machines[machine_id].machine.get_status() == "stopped"
         self.state.remove_machine(machine_id)
