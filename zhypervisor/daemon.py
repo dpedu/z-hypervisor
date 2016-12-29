@@ -100,7 +100,7 @@ class ZHypervisorDaemon(object):
         """
         Create a disk
         """
-        assert disk_id not in self.disks, "Cannot update disks"
+        assert disk_id not in self.disks, "Cannot update disks, only create supported"
         disk_type = disk_spec["options"]["type"]
         disk_datastore = disk_spec["options"]["datastore"]
         datastore = self.datastores[disk_datastore]
@@ -122,7 +122,6 @@ class ZHypervisorDaemon(object):
         """
         Remove a disk from the system
         """
-        assert self.disks[disk_id].get_status() == "idle", "Disk must be idle to delete"
         self.disks[disk_id].delete()
         del self.disks[disk_id]
         self.state.remove_disk(disk_id)

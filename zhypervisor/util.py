@@ -91,8 +91,5 @@ class ZDisk(object):
         return {"options": self.options,
                 "properties": self.properties}
 
-    def get_status(self):
-        return "idle"  # TODO
-
     def delete(self):
         raise NotImplemented()

@@ -34,7 +34,7 @@ class ZApi(object):
         # self.app_root = BSApiRoot(self).mount('/api')
         # self.ui = Mountable(conf={'/': {
         #                          'tools.staticdir.on': True,
-        #                          'tools.staticdir.dir': os.getcwd() + '/ui/build',  # TODO don't hardcode
+        #                          'tools.staticdir.dir': os.getcwd() + '/ui/build',
         #                          'tools.staticdir.index': 'index.html'}}).mount('/ui')
 
         cherrypy.config.update({
@@ -43,7 +43,7 @@ class ZApi(object):
             'tools.sessions.locking': 'explicit',
             'tools.sessions.timeout': 525600,
             'request.show_tracebacks': True,
-            'server.socket_port': 3000,  # TODO configurable port
+            'server.socket_port': self.master.config.get("apiport", 3000),
             'server.thread_pool': 25,
             'server.socket_host': '0.0.0.0',
             'server.show_tracebacks': True,
@@ -70,7 +70,7 @@ class ZApiV1(Mountable):
         super().__init__(conf={
             "/machine": {'request.dispatch': cherrypy.dispatch.MethodDispatcher()},
             "/disk": {'request.dispatch': cherrypy.dispatch.MethodDispatcher()},
-            # "/task": {'request.dispatch': cherrypy.dispatch.MethodDispatcher()},  # @TODO this conf belongs in the child
+            # "/task": {'request.dispatch': cherrypy.dispatch.MethodDispatcher()},
             # "/logs": {
             #     'tools.staticdir.on': True,
             #     'tools.staticdir.dir': root.master.log_path,
@@ -142,7 +142,6 @@ class ZApiMachineRestart(object):
     def GET(self, machine_id=None):
         """
         Start the machine
-        TODO can we not repeat this from Stop/Start?
         """
         assert machine_id in self.root.master.machines
         self.root.master.forceful_stop(machine_id)
@@ -271,12 +270,6 @@ class ZApiDisks():
         :param disk_id: id of disk to create or modify
         'param disk_spec: json dictionary describing the disk. see the 'spec' key of example/ubuntu-root.json
         """
-
-        assert disk_id not in self.root.master.disks or \
-            self.root.master.disks[disk_id].get_status() == "idle", \
-            "Disk must not be attached to modify"  # TODO to a running machine?
-                                                   # TODO move asserts out of the API
-
         disk_spec = json.loads(disk_spec)
         self.root.master.add_disk(disk_id, disk_spec, write=True)
         return disk_id
@@ -286,11 +279,5 @@ class ZApiDisks():
         Delete a disk. Raises 404 if no such disk exists. Raises error if disk is not idle (detached)
         :param disk_id: ID of disk to remove
         """
-        try:
-            assert self.root.master.disks[disk_id].get_status() == "idle", \
-                "Disk must be detached to delete"
-        except KeyError:
-            raise cherrypy.HTTPError(status=404)
-
         self.root.master.remove_disk(disk_id)
         return disk_id

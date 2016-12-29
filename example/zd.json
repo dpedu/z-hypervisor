@@ -15,5 +15,6 @@
             "path": "/media/realm/tmp/qemu-testin/banto/",
             "init": true
         }
-    }
+    },
+    "apiport": 3000
 }
