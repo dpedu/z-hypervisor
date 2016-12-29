@@ -57,7 +57,7 @@ class ZHypervisorDaemon(object):
         Load all disks and ensure reachability
         """
         for disk in self.state.get_disks():
-            self.add_disk(disk["disk_id"], {"options": disk["options"], "properties": disk["properties"]})
+            self.add_disk(disk["disk_id"], disk["properties"])
 
     def init_machines(self):
         """
@@ -65,11 +65,11 @@ class ZHypervisorDaemon(object):
         """
         for machine_info in self.state.get_machines():
             machine_id = machine_info["machine_id"]
-            self.add_machine(machine_id, machine_info["spec"])
+            self.add_machine(machine_id, machine_info["properties"])
 
             # Launch if machine is an autostarted machine
             machine = self.machines[machine_id]
-            if machine.options.get("autostart", False) and machine.machine.get_status() == "stopped":
+            if machine.properties.get("autostart", False) and machine.machine.get_status() == "stopped":
                 machine.start()
 
     def signal_handler(self, signum, frame):
@@ -106,8 +106,8 @@ class ZHypervisorDaemon(object):
         Create a disk
         """
         assert disk_id not in self.disks, "Cannot update disks, only create supported"
-        disk_type = disk_spec["options"]["type"]
-        disk_datastore = disk_spec["options"]["datastore"]
+        disk_type = disk_spec["type"]
+        disk_datastore = disk_spec["datastore"]
         datastore = self.datastores[disk_datastore]
         if disk_type == "qdisk":
             disk = QDisk(datastore, disk_id, disk_spec)
@@ -137,14 +137,13 @@ class ZHypervisorDaemon(object):
         """
         Create or update a machine.
         :param machine_id: alphanumeric id of machine to modify/create
-        :param machine_spec: dictionary of machine options - see example/ubuntu.json
+        :param machine_spec: dictionary of machine properties - see example/ubuntu.json
         :param write: commit machinge changes to on-disk state
         """
         # Find / create the machine
         if machine_id in self.machines:
             machine = self.machines[machine_id]
-            machine.options = machine_spec["options"]
-            machine.properties = machine_spec["properties"]
+            machine.properties = machine_spec
         else:
             machine = MachineSpec(self, machine_id, machine_spec)
             self.machines[machine_id] = machine
@@ -190,7 +189,7 @@ class ZDataStore(object):
         except:
             if init_ok:
                 with open(metainfo_path, "w") as f:
-                    json.dump({}, f)
+                    json.dump({}, f, sort_keys=True, indent=4)
             else:
                 raise
         logging.info("Initialized datastore %s at %s", name, self.root_path)
@@ -229,7 +228,7 @@ class ZConfig(object):
         """
         with open(os.path.join(self.machine_data_dir, "{}.json".format(machine_id)), "w") as f:
             json.dump({"machine_id": machine_id,
-                       "spec": machine_spec}, f, indent=4)
+                       "properties": machine_spec}, f, indent=4, sort_keys=True)
 
     def write_machine_o(self, machine_obj):
         """
@@ -258,8 +257,7 @@ class ZConfig(object):
     def write_disk(self, disk_id, disk_spec):
         with open(os.path.join(self.disk_data_dir, "{}.json".format(disk_id)), "w") as f:
             disk = {"disk_id": disk_id,
-                    "options": disk_spec["options"],
-                    "properties": disk_spec["properties"]}
+                    "properties": disk_spec}
             json.dump(disk, f, indent=4)
 
     def remove_disk(self, disk_id):
@@ -283,7 +281,7 @@ def main():
                            "default": {
                                "path": "/opt/z/datastore/machines/"
                            }
-                       }}, f, indent=4)
+                       }}, f, indent=4, sort_keys=True)
         return
 
     with open(args.config) as f:

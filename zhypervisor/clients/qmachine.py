@@ -46,7 +46,7 @@ class QMachine(Machine):
         proc.wait()
         logging.info("qemu process has exited")
         self.proc = None
-        if not self.block_respawns and self.spec.options.get("respawn", False):
+        if not self.block_respawns and self.spec.properties.get("respawn", False):
             self.start_machine()
 
     def stop_machine(self):

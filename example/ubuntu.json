@@ -1,38 +1,34 @@
 {
     "machine_id": "ubuntu",
-    "spec": {
-        "options": {
-            "type": "q",
-            "autostart": true,
-            "respawn": true
-        },
-        "properties": {
-            "cores": 2,
-            "mem": 1024,
-            "drives": [
-                {
-                    "disk": "ubuntu-root",
-                    "index": 0,
-                    "if": "virtio"
-                },
-                {
-                    "disk": "multipreseed-14.04.iso",
-                    "index": 1,
-                    "media": "cdrom"
-                }
-            ],
-            "netifaces": [
-                {
-                    "type": "nic",
-                    "vlan": 0,
-                    "model": "e1000",
-                    "macaddr": "82:25:60:41:07:98"
-                },
-                {
-                    "type": "tap"
-                }
-            ],
-            "vnc": 10
-        }
+    "properties": {
+        "type": "q",
+        "autostart": true,
+        "respawn": true,
+        "cores": 2,
+        "mem": 1024,
+        "drives": [
+            {
+                "disk": "ubuntu-root",
+                "index": 0,
+                "if": "virtio"
+            },
+            {
+                "disk": "multipreseed-14.04.iso",
+                "index": 1,
+                "media": "cdrom"
+            }
+        ],
+        "netifaces": [
+            {
+                "type": "nic",
+                "vlan": 0,
+                "model": "e1000",
+                "macaddr": "82:25:60:41:07:98"
+            },
+            {
+                "type": "tap"
+            }
+        ],
+        "vnc": 10
     }
 }

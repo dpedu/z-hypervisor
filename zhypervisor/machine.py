@@ -16,14 +16,13 @@ class MachineSpec(object):
         self.master = master
         self.machine_id = machine_id
 
-        self.options = spec["options"]
-        self.properties = spec["properties"]
+        self.properties = spec
 
         # TODO replace if/else with better system
-        if self.options["type"] == "q":
+        if self.properties["type"] == "q":
             self.machine = QMachine(self)
         else:
-            raise Exception("Unknown machine type: {}".format(self.options["type"]))
+            raise Exception("Unknown machine type: {}".format(self.properties["type"]))
 
     def start(self):
         """
@@ -43,12 +42,10 @@ class MachineSpec(object):
         """
         Write the machine's config to disk
         """
-        self.master.add_machine(self.machine_id, {"options": self.options, "properties": self.properties},
-                                write=True)
+        self.master.add_machine(self.machine_id, self.properties, write=True)
 
     def serialize(self):
         """
         Return a serializable form of this machine's specs
         """
-        return {"options": self.options,
-                "properties": self.properties}
+        return self.properties

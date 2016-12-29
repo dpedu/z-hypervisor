@@ -70,8 +70,7 @@ class ZDisk(object):
     def __init__(self, datastore, disk_id, spec):
         self.datastore = datastore
         self.disk_id = disk_id
-        self.options = spec["options"]
-        self.properties = spec["properties"]
+        self.properties = spec
         self.validate()
 
     def validate(self):
@@ -88,8 +87,7 @@ class ZDisk(object):
         os.makedirs(self.get_path(), exist_ok=True)
 
     def serialize(self):
-        return {"options": self.options,
-                "properties": self.properties}
+        return self.properties
 
     def delete(self):
         raise NotImplemented()

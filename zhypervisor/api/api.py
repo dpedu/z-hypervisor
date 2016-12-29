@@ -235,7 +235,7 @@ class ZApiMachines():
             machine = {"machine_id": _machine_id,
                        "_status": machine_spec.machine.get_status()}
             if not summary:
-                machine.update({"spec": machine_spec.serialize()})
+                machine.update({"properties": machine_spec.serialize()})
 
             machines[_machine_id] = machine
         if machine_id is not None:
