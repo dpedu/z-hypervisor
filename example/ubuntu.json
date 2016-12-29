@@ -1,6 +1,5 @@
 {
     "machine_id": "ubuntu",
-    "machine_type": "q",
     "spec": {
         "options": {
             "type": "q",
