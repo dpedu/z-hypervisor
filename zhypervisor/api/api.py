@@ -1,7 +1,6 @@
 import cherrypy
 import logging
 import json
-import subprocess
 from threading import Thread
 
 
@@ -70,6 +69,7 @@ class ZApiV1(Mountable):
     def __init__(self, root):
         super().__init__(conf={
             "/machine": {'request.dispatch': cherrypy.dispatch.MethodDispatcher()},
+            "/disk": {'request.dispatch': cherrypy.dispatch.MethodDispatcher()},
             # "/task": {'request.dispatch': cherrypy.dispatch.MethodDispatcher()},  # @TODO this conf belongs in the child
             # "/logs": {
             #     'tools.staticdir.on': True,
@@ -79,6 +79,7 @@ class ZApiV1(Mountable):
         })
         self.root = root
         self.machine = ZApiMachines(self.root)
+        self.disk = ZApiDisks(self.root)
         # self.task = BSApiTask(self.root)
         # self.control = BSApiControl(self.root)
         # self.socket = ApiWebsockets(self.root)
@@ -86,18 +87,6 @@ class ZApiV1(Mountable):
     @cherrypy.expose
     def index(self):
         yield "It works!"
-
-    @cherrypy.expose
-    def create_disk(self, datastore, name, size, fmt):
-        """
-        WORKAROUND for creating qemu disks
-        TODO replace me
-        """
-        assert fmt in ["qcow2", "raw"], "Disk format is invalid"
-        assert name.endswith(".bin"), "Disk must be named <something>.bin"
-        self.root.master.create_disk(datastore, name, fmt, size)
-
-        return name
 
 
 @cherrypy.popargs("machine_id")
@@ -180,10 +169,10 @@ class ZApiMachines():
         self.restart = ZApiMachineRestart(self.root)
 
     @cherrypy.tools.json_out()
-    def GET(self, machine_id=None, action=None, summary=False):
+    def GET(self, machine_id=None, summary=False):
         """
         Get a list of all machines or specific one if passed
-        :param task_id: task to retrieve
+        :param machine_id: machine to retrieve
         """
         summary = summary in [True, 'True', 'true', 'yes', '1', 1]
 
@@ -192,8 +181,7 @@ class ZApiMachines():
             machine = {"machine_id": _machine_id,
                        "_status": machine_spec.machine.get_status()}
             if not summary:
-                machine.update({"machine_type": machine_spec.machine_type,
-                                "spec": machine_spec.serialize()})
+                machine.update({"spec": machine_spec.serialize()})
 
             machines[_machine_id] = machine
         if machine_id is not None:
@@ -205,11 +193,10 @@ class ZApiMachines():
             return list(machines.values())
 
     @cherrypy.tools.json_out()
-    def PUT(self, machine_id, machine_type, machine_spec):
+    def PUT(self, machine_id, machine_spec):
         """
         Create a new machine or update an existing machine
         :param machine_id: id of machine to create or modify
-        :param machine_type: set machine type (currently, only "q")
         'param machine_spec: json dictionary describing the machine. see the 'spec' key of example/banutoo.json
         """
 
@@ -218,7 +205,7 @@ class ZApiMachines():
             "Machine must be stopped to modify"
 
         machine_spec = json.loads(machine_spec)
-        self.root.master.add_machine(machine_id, machine_type, machine_spec, write=True)
+        self.root.master.add_machine(machine_id, machine_spec, write=True)
         return machine_id
 
     def DELETE(self, machine_id):
@@ -234,3 +221,76 @@ class ZApiMachines():
 
         self.root.master.remove_machine(machine_id)
         return machine_id
+
+
+@cherrypy.popargs("disk_id")
+class ZApiDisks():
+    """
+    Endpoint for managing disks
+    """
+
+    exposed = True
+
+    def __init__(self, root):
+        """
+        Endpoint to modify disks. PUT and DELETE require the disk not be attached.
+        TODO how to attach/detach?
+        """
+        self.root = root
+
+    @cherrypy.tools.json_out()
+    def GET(self, disk_id=None, summary=False):
+        """
+        Get a list of disks or a specific one if passed
+        :param disk_id: task to retrieve
+        """
+        summary = summary in [True, 'True', 'true', 'yes', '1', 1]
+
+        disks = {}
+        for _disk_id, disk_spec in self.root.master.disks.items():
+            disk = {"disk_id": _disk_id}
+                       # "_status": machine_spec.machine.get_status()}  attached / detached ?
+            # if not summary:
+            #     machine.update({"machine_type": machine_spec.machine_type,
+            #                     "spec": machine_spec.serialize()})
+            disk.update({"spec": disk_spec.serialize()})
+
+            disks[_disk_id] = disk
+        if disk_id is not None:
+            try:
+                return [disks[disk_id]]
+            except KeyError:
+                raise cherrypy.HTTPError(status=404)
+        else:
+            return list(disks.values())
+
+    @cherrypy.tools.json_out()
+    def PUT(self, disk_id, disk_spec):
+        """
+        Create a new disk or update an existing disk
+        :param disk_id: id of disk to create or modify
+        'param disk_spec: json dictionary describing the disk. see the 'spec' key of example/ubuntu-root.json
+        """
+
+        assert disk_id not in self.root.master.disks or \
+            self.root.master.disks[disk_id].get_status() == "idle", \
+            "Disk must not be attached to modify"  # TODO to a running machine?
+                                                   # TODO move asserts out of the API
+
+        disk_spec = json.loads(disk_spec)
+        self.root.master.add_disk(disk_id, disk_spec, write=True)
+        return disk_id
+
+    def DELETE(self, disk_id):
+        """
+        Delete a disk. Raises 404 if no such disk exists. Raises error if disk is not idle (detached)
+        :param disk_id: ID of disk to remove
+        """
+        try:
+            assert self.root.master.disks[disk_id].get_status() == "idle", \
+                "Disk must be detached to delete"
+        except KeyError:
+            raise cherrypy.HTTPError(status=404)
+
+        self.root.master.remove_disk(disk_id)
+        return disk_id

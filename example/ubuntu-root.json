@@ -1,0 +1,13 @@
+{
+    "disk_id": "ubuntu-root.bin",
+    "spec": {
+        "options": {
+            "type": "qdisk",
+            "datastore": "default"
+        },
+        "properties": {
+            "size": 8192,
+            "fmt": "qcow2"
+        }
+    }
+}

@@ -5,6 +5,7 @@ from time import sleep
 from threading import Thread
 
 from zhypervisor.util import TapDevice, Machine
+from zhypervisor.util import ZDisk
 
 
 class QMachine(Machine):
@@ -124,18 +125,21 @@ class QMachine(Machine):
         """
         Inspect props.drives expecting a format like:  {"file": "/tmp/ubuntu.qcow2", "index": 0, "if": "virtio"}
         """
-        drives = []
-        for drive in self.spec.properties.get("drives", []):
-            drive_info = dict(drive)
-            drives.append("-drive")
+        args = []
+        for attached_drive in self.spec.properties.get("drives", []):
+            args.append("-drive")
 
-            # translate datastore paths if neede
-            if "file" in drive_info:
-                drive_info["file"] = self.get_datastore_path(drive_info["datastore"], drive_info["file"])
-            del drive_info["datastore"]
+            disk_ob = self.spec.master.disks[attached_drive["disk"]]
 
-            drives.append(QMachine.format_args(drive_info))
-        return drives
+            drive_args = {"file": disk_ob.get_path()}
+
+            for option in ["if", "index", "media"]:
+                if option in attached_drive:
+                    drive_args[option] = attached_drive[option]
+
+            args.append(QMachine.format_args((drive_args)))
+
+        return args
 
     @staticmethod
     def format_args(d):
@@ -152,3 +156,36 @@ class QMachine(Machine):
         if not args:
             return None
         return ','.join(args)
+
+
+class QDisk(ZDisk):
+
+    def init(self):
+        """
+        Create a QEMU-formatted virtual disk
+        """
+        disk_path = self.get_path()
+        assert not os.path.exists(disk_path), "Disk already exists!"
+        img_args = ["qemu-img", "create", "-f", self.properties["fmt"], disk_path, "{}M".format(int(self.properties["size"]))]
+        logging.info("Creating disk with: %s", str(img_args))
+        subprocess.check_call(img_args)
+
+    def validate(self):
+        assert self.disk_id.endswith(".bin"), "QDisks names must end with '.bin'"
+
+    def delete(self):
+        os.unlink(self.get_path())
+
+
+class IsoDisk(ZDisk):
+    pass
+    # TODO make this do more nothing
+
+    def validate(self):
+        assert self.disk_id.endswith(".iso"), "IsoDisk names must end with '.iso'"
+
+    def init(self):
+        assert os.path.exists(self.get_path()), "ISO must already exist!"
+
+    def delete(self):
+        pass

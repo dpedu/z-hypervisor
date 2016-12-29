@@ -25,14 +25,6 @@ Install
 HTTP API
 ========
 
-*GET /api/v1/create_disk*
-
-    Create a storate disk to use with machines. Params:
-    - datastore: datastore name such as 'default'
-    - name: arbitrary disk name like 'ubuntu-root.bin'
-    - size: size in megabytes
-    - fmt: format, raw or qcow2
-
 *GET /api/v1/machine/:id/start*
 
     Start a machine given its id
@@ -53,10 +45,21 @@ HTTP API
 
     Create a new machine or update an existing machine. Params:
     - machine_id: alphanumeric name for the name
-    - machine_type: type of virtualization to run the machine with
     - machine_spec: serialized json object describing the machine. See the 'spec' key of example/ubuntu.json
 
 *DELETE /api/v1/machine/:id*
 
     Delete a machine give its id
 
+*GET /api/v1/disk/:id*
+
+    List all disks or a specific disk if passed
+
+*PUT /api/v1/disk/:id*
+
+    Create a storate disk to use with machines. Params:
+    - disk_spec: serialized json object describing the disk. See the 'spec' key of example/ubuntu-root.json and example/ubuntu-iso.json
+
+*DELETE /api/v1/disk/:id*
+
+    Delete a disk by ID

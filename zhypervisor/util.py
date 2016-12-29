@@ -1,5 +1,6 @@
 
 import os
+import json
 from random import randint
 
 
@@ -63,3 +64,35 @@ class Machine(object):
         Resolve the filesystem path for a path in the given datastore
         """
         return self.spec.master.datastores.get(datastore_name).get_filepath(*paths)
+
+
+class ZDisk(object):
+    def __init__(self, datastore, disk_id, spec):
+        self.datastore = datastore
+        self.disk_id = disk_id
+        self.options = spec["options"]
+        self.properties = spec["properties"]
+        self.validate()
+
+    def validate(self):
+        pass
+
+    def get_path(self):
+        return self.datastore.get_filepath(os.path.join("disks", self.disk_id))
+
+    def exists(self):
+        path = self.get_path()
+        return os.path.exists(path)
+
+    def init(self):
+        os.makedirs(self.get_path(), exist_ok=True)
+
+    def serialize(self):
+        return {"options": self.options,
+                "properties": self.properties}
+
+    def get_status(self):
+        return "idle"  # TODO
+
+    def delete(self):
+        raise NotImplemented()

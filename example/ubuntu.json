@@ -3,6 +3,7 @@
     "machine_type": "q",
     "spec": {
         "options": {
+            "type": "q",
             "autostart": true,
             "respawn": true
         },
@@ -11,14 +12,12 @@
             "mem": 1024,
             "drives": [
                 {
-                    "file": "ubuntu-root.bin",
-                    "datastore": "default",
+                    "disk": "ubuntu-root",
                     "index": 0,
                     "if": "virtio"
                 },
                 {
-                    "file": "ubuntu-14.04.iso",
-                    "datastore": "default",
+                    "disk": "multipreseed-14.04.iso",
                     "index": 1,
                     "media": "cdrom"
                 }
