@@ -1,11 +1,7 @@
 {
     "disk_id": "ubuntu-14.04.5_x64.iso",
-    "spec": {
-        "options": {
-            "type": "iso",
-            "datastore": "default"
-        },
-        "properties": {
-        }
+    "properties": {
+        "type": "iso",
+        "datastore": "default"
     }
 }
