@@ -44,12 +44,27 @@ HTTP API
 *PUT /api/v1/machine/:id*
 
     Create a new machine or update an existing machine. Params:
-    - machine_id: alphanumeric name for the name
+    - machine_id: alphanumeric name for the machine
     - machine_spec: serialized json object describing the machine. See the 'spec' key of example/ubuntu.json
 
 *DELETE /api/v1/machine/:id*
 
     Delete a machine give its id
+
+*GET /api/v1/machine/:id/property/:property*
+
+    Get the current value of a machine's property
+
+*PUT /api/v1/machine/:id/property/:property*
+
+    Create or update a machine's property. Params:
+    - machine_id: alphanumeric name for the name
+    - property: name of the property to modify or create
+    - value: serialized json object to set as the value
+
+*DELETE /api/v1/machine/:id/property/:property*
+
+    Remove a property from a machine
 
 *GET /api/v1/disk/:id*
 
