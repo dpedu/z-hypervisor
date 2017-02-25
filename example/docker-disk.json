@@ -1,0 +1,7 @@
+{
+    "disk_id": "dockerdata",
+    "properties": {
+        "type": "dockerdisk",
+        "datastore": "default"
+    }
+}

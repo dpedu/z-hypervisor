@@ -35,7 +35,7 @@ class Machine(object):
     def __init__(self, machine_spec):
         self.spec = machine_spec
 
-    def run_machine(self):
+    def start_machine(self):
         """
         Run the machine and block until it exits (or was killed)
         """

@@ -1,6 +1,9 @@
 import logging
 
 from zhypervisor.clients.qmachine import QMachine
+from zhypervisor.clients.dockermachine import DockerMachine
+
+MACHINETYPES = {"q": QMachine, "docker": DockerMachine}
 
 
 class MachineSpec(object):
@@ -18,11 +21,12 @@ class MachineSpec(object):
 
         self.properties = spec
 
-        # TODO replace if/else with better system
-        if self.properties["type"] == "q":
-            self.machine = QMachine(self)
-        else:
-            raise Exception("Unknown machine type: {}".format(self.properties["type"]))
+        try:
+            machine_type = MACHINETYPES[self.properties.get("type", None)]
+        except KeyError:
+            raise Exception("Unknown or missing machine type: {}".format(self.properties.get("type", None)))
+
+        self.machine = machine_type(self)
 
     def start(self):
         """

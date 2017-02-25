@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from zhypervisor.logging import setup_logging
 from zhypervisor.machine import MachineSpec
 from zhypervisor.clients.qmachine import QDisk, IsoDisk
+from zhypervisor.clients.dockermachine import DockerDisk
 from zhypervisor.util import ZDisk
 from zhypervisor.api.api import ZApi
 
@@ -113,6 +114,8 @@ class ZHypervisorDaemon(object):
             disk = QDisk(datastore, disk_id, disk_spec)
         elif disk_type == "iso":
             disk = IsoDisk(datastore, disk_id, disk_spec)
+        elif disk_type == "dockerdisk":
+            disk = DockerDisk(datastore, disk_id, disk_spec)
         else:
             raise Exception("Unknown disk type: {}".format(disk_type))
             disk = ZDisk(datastore, disk_id, disk_spec)

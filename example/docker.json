@@ -1,0 +1,9 @@
+{
+    "machine_id": "dockertest",
+    "properties": {
+        "ports": [
+            [1234, 80]
+        ],
+        "image": "dpedu/nginx"
+    }
+}
